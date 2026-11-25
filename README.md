@@ -427,3 +427,32 @@ installer/
 - 字幕只支持固定位置预设（底部居中 / 顶部居中 / 画面中央 / 偏下三分之一），不能任意拖坐标，所以没有做居中大字标题
 - 品牌镜头里没有文字、没有界面、没有水印，品牌字标全部由字幕层承担，避免模型生成错字
 - 抽帧对照图：`build\promo\contact_promo.png`（前段）与 `contact_tail.png`（尾段）
+
+## 发版（新版自动替换旧文件）
+
+一条命令搞定打包 + 发布 + 清旧版：
+
+```
+pwsh -NoProfile -File build\_pack.ps1 -Publish
+```
+
+`tools\publish.ps1` 单独跑也可以，支持 `-DryRun` 先看会动什么。
+
+它依次做四件事：
+
+1. 用新版覆盖仓库根目录的 `CubeLauncher.exe`、`CubeLauncher-Setup.exe`（`contents` API，带 sha 覆盖）
+2. 建 `v<当前版本>` 的 Release（版本号默认取 `src\Config.cs` 里最后一个 `Version` 常量）
+3. 删掉更早的 Release：先逐个删资产，再删 Release 本体；默认**只保留最新 1 个**，要留历史用 `-KeepOld 3`
+4. 按顺序上传三件套
+
+资产命名与更新器是一套约定，别随手改：
+
+| 资产名 | 对应 | 说明 |
+|---|---|---|
+| `CubeLauncher-Setup.exe` | 正式安装版 | 更新器只认名字含 `Setup` 的 exe |
+| `CubeLauncher-Dev.exe` | 开发者版 | **故意不带 Setup**，否则可能被更新器当成正式包 |
+| `CubeLauncher-Portable.zip` | 免安装版 | 解压即用 |
+
+玩家端每 12 小时读一次 `/releases/latest`，按数字逐段比版本（`1.0.0-1124.9` → `[1,0,0,1124,9]`，比 `1.0.0` 大），有新版就弹更新弹窗。
+
+token 默认读 `%USERPROFILE%\cubelauncher_gh_token.txt`（classic token，勾 `repo` 权限），也可以用 `-Token` 传或设环境变量 `GITHUB_TOKEN`。
